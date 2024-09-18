@@ -1,0 +1,187 @@
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: test-scheduling-clusterrole
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - endpoints
+      - events
+    verbs:
+      - create
+      - get
+      - update
+      - list
+      - watch
+      - patch
+  - apiGroups:
+      - ""
+    resources:
+      - nodes
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - ""
+    resources:
+      - pods
+    verbs:
+      - delete
+      - get
+      - list
+      - watch
+      - update
+  - apiGroups:
+      - ""
+    resources:
+      - bindings
+      - pods/binding
+    verbs:
+      - create
+  - apiGroups:
+      - ""
+    resources:
+      - pods/status
+    verbs:
+      - patch
+      - update
+  - apiGroups:
+      - ""
+    resources:
+      - replicationcontrollers
+      - services
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - apps
+      - extensions
+    resources:
+      - replicasets
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - apps
+    resources:
+      - statefulsets
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - policy
+    resources:
+      - poddisruptionbudgets
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - ""
+    resources:
+      - persistentvolumeclaims
+      - persistentvolumes
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - ""
+    resources:
+      - namespaces
+      - configmaps
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - "storage.k8s.io"
+    resources: ['*']
+    verbs:
+      - get
+      - list
+      - watch
+  # metrics-server client 需要使用
+  - apiGroups:
+      - "metrics.k8s.io"
+    resources:
+      - nodes
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - "coordination.k8s.io"
+    resources:
+      - leases
+    verbs:
+      - create
+      - get
+      - list
+      - update
+  - apiGroups:
+      - "events.k8s.io"
+    resources:
+      - events
+    verbs:
+      - create
+      - patch
+      - update
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: test-scheduling-sa
+  namespace: kube-system
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: test-scheduling-clusterrolebinding
+  namespace: kube-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: test-scheduling-clusterrole
+subjects:
+  - kind: ServiceAccount
+    name: test-scheduling-sa
+    namespace: kube-system
+---
+# 一定要挂载
+# v1.20版本 使用kubescheduler.config.k8s.io/v1beta1版本
+# v1.22版本 使用kubescheduler.config.k8s.io/v1beta2版本
+# 当需要使用不同调度插件时，再此指定
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test-scheduling-config
+  namespace: kube-system
+data:
+   config.yaml: | 
+    apiVersion: kubescheduler.config.k8s.io/v1beta1
+    kind: KubeSchedulerConfiguration
+    leaderElection:
+      leaderElect: false
+    
+    profiles:
+    - schedulerName: test-pod-maxnum-scheduler   # 指定调度插件名称
+      plugins:                                   # 调度插件framework中具体要执行哪些方法
+        preFilter:
+          enabled:
+            - name: "test-pod-maxnum-scheduler"
+        filter:
+          enabled:
+            - name: "test-pod-maxnum-scheduler"
+      pluginConfig:                              # 配置文件
+        - name: test-pod-maxnum-scheduler
+          args:
+            maxPods: 2
+
+         

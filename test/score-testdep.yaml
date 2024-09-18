@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: testngx
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: testngx
+  template:
+    metadata:
+      labels:
+        app: testngx
+    spec:
+      schedulerName: test-pod-score-scheduler  # 指定调度插件，需要与自定义的插件名匹配。
+      containers:
+        - image: crpi-wpd2fghu4joh4sz7.cn-beijing.personal.cr.aliyuncs.com/cszdm/nginx:1.27.1-alpine3.20-perl
+          imagePullPolicy: IfNotPresent
+          name: testngx
+          ports:
+            - containerPort: 80
